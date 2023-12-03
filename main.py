@@ -14,6 +14,28 @@ print_lock = threading.Lock()
 cap = cv.VideoCapture(0)
 
 
+class OCRThread(threading.Thread):
+
+    '''
+    Pass video frame to second thread for porcessing
+    hopefully this 
+    '''
+
+    def __init__(self, queue, args=(), kwargs=None):
+        threading.Thread.__init__(self, args=(), kwargs=None)
+        self.queue = queue
+        self.daemon = True
+        self.receive_messages = args[0]
+
+    def run(self):
+        print (threading.currentThread().getName(), self.receive_messages)
+        val = self.queue.get()
+        self.do_thing_with_message(val)
+
+    def do_thing_with_message(self, message):
+        if self.receive_messages:
+            with print_lock:
+                print (threading.currentThread().getName(), "Received {}".format(message))
 
 
 

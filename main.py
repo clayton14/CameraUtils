@@ -3,15 +3,13 @@ import cv2 as cv
 import pytesseract as ocr
 import os, sys
 
-
-
 import threading
 from queue import Queue
 
 # TODO get camera devices in list
 # TODO read in camera data
 # TODO run OCR on vidoe frames
-# TODO optmise  
+# TODO optmise -> https://stackoverflow.com/questions/55494331/recording-video-with-opencv-python-multithreading
 
 print_lock = threading.Lock()
 cap = cv.VideoCapture(0)
@@ -24,20 +22,16 @@ def read_text():
     try:
         print("Reading Frames")
         while cap.isOpened():
-        # Capture frame-by-frame
             ret, frames = cap.read()
             
+            # TODO - process this on seprate thread
+            #gray scaling the image made the OCR a bit more accurate
             frames = cv.cvtColor(frames, cv.COLOR_BGR2GRAY)
-            #print(frames)
-            # if frames.all() % 20 == 0:
-                #print(frames)
             text = ocr.image_to_string(frames, lang="eng")
             print(text)
-
             if not ret:
                 print("Can't receive frame (stream end?). Exiting ...")
                 break
-            
             cv.imshow('frame', frames)
             if cv.waitKey(1) == ord('q'):
                 break

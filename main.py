@@ -2,8 +2,11 @@ import numpy as np
 import cv2 as cv
 import pytesseract as ocr
 import os, sys
-import threading
 
+
+
+import threading
+from queue import Queue
 
 # TODO get camera devices in list
 # TODO read in camera data
@@ -13,53 +16,23 @@ import threading
 print_lock = threading.Lock()
 cap = cv.VideoCapture(0)
 
-
-class OCRThread(threading.Thread):
-
-    '''
-    Pass video frame to second thread for porcessing
-    hopefully this 
-    '''
-
-    def __init__(self, queue, args=(), kwargs=None):
-        threading.Thread.__init__(self, args=(), kwargs=None)
-        self.queue = queue
-        self.daemon = True
-        self.receive_messages = args[0]
-
-    def run(self):
-        print (threading.currentThread().getName(), self.receive_messages)
-        val = self.queue.get()
-        self.do_thing_with_message(val)
-
-    def do_thing_with_message(self, message):
-        if self.receive_messages:
-            with print_lock:
-                print (threading.currentThread().getName(), "Received {}".format(message))
-
-
-
-
 def read_text():
-    current_text = ""
-    count = 0
-    img_buff = []
+   
     if not cap.isOpened():
         print("Cannot open camera")
         exit()
     try:
         print("Reading Frames")
         while cap.isOpened():
-            count += 1
         # Capture frame-by-frame
             ret, frames = cap.read()
-            #print(frame)
-
-            #for i, frame in enumerate(frames):
-            if frames.all() % 20 == 0:
+            
+            frames = cv.cvtColor(frames, cv.COLOR_BGR2GRAY)
+            #print(frames)
+            # if frames.all() % 20 == 0:
                 #print(frames)
-                text = ocr.image_to_string(frames, lang="eng")
-                print(text)
+            text = ocr.image_to_string(frames, lang="eng")
+            print(text)
 
             if not ret:
                 print("Can't receive frame (stream end?). Exiting ...")
@@ -87,5 +60,39 @@ def read_text():
 
 
 if __name__ == "__main__":
+    
     read_text()
 
+
+
+
+#class OCRThread(threading.Thread):
+
+#     '''
+#     Pass video frame to second thread for porcessing
+#     hopefully this 
+#     '''
+
+#     def __init__(self, queue, args=(), kwargs=None):
+#         threading.Thread.__init__(self, args=(), kwargs=None)
+#         self.queue = queue
+#         self.daemon = True
+#         self.receive_messages = args
+
+#     def run(self):
+#         print (threading.currentThread().getName(), self.receive_messages)
+#         val = self.queue.get()
+#         while True:
+#             val = self.queue.get()
+#             if val is None:
+#                 return
+#             self.get_text(val)
+
+
+#     def get_text(self, message):
+#         if self.receive_messages:
+#                 # text = ocr.image_to_string(frames, lang="eng")
+#                 # print(text)
+#             print(message)
+#             with print_lock:
+#                 print (threading.currentThread().getName(), "Received {}".format(message))

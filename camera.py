@@ -1,81 +1,96 @@
 import cv2
 import sys
 from threading import Thread
-import time
+import threading
+from typing import List
 import numpy as np
+import numpy.typing as npt
 
-
-class Camera(Thread):
+class CameraThread:
     """
-    Represents a vidoe device connected to a computer. 
-    Spawns a new thread for reach camera stream and outputs numpy array 
+    Represents a vidoe device connected to a computer.
+    Spawns a new thread for reach camera stream and outputs numpy array
     """
-    def __init__(self, width:int, height:int, source:int ) -> None:
-        super(Camera, self).__init__()
-        self.daemon = True
-        #self.capture = cv2.VideoCapture(source)
 
-        self.wdth = width
+    def __init__(self, width: int, height: int, source: str) -> None:
+        self.width = width
         self.height = height
+        self.read_lock = threading.Lock()
+        self.capture = cv2.VideoCapture(source)
+        self.grabbed, self.frames = self.capture.read()
+        self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+        self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
         self.is_running = False
-        # self.grabbed = False
- 
+        
 
-        # TODO test to see if this works to set resloution of vido
-        # self.frames.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-        # self.frames.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    def __exit__(self, exec_type, exc_value, traceback):
+        self.cap.release()
 
+    def start(self) -> object:
+        # TODO - implement run method
+        if self.is_running:
+            print("Capture is already started")
+            return None
+        self.is_running = True
+        self.thread = Thread(target=self.update, args=(), daemon=True)
+        # Thread(target=self.view, args=(), daemon=True)
+        self.thread.start()
+        return self
 
-    def run(self):
-        #TODO - implement run method
-        self.get_frames()
+    def update(self) -> None:
+        # print(self.capure.isOpened())
+        try:
+            while self.is_running:
+                grabbed, frames = self.capture.read()
+                with self.read_lock:
+                    self.grabbed = grabbed
+                    self.frames = frames
+        except KeyboardInterrupt as ex:
+            print("exit")
+            self.capture.release()
 
-
-    def get_devices(self):
+    def get_devices(self) -> List[object]:
+        # retruns a list of CV2 capture devices
         # TODO - list all the camer deviecs and return list of avlaible devices
         index = 0
         cameras = []
         try:
             while True:
-                print("INDEX ", index)
+                # print("INDE   X ", index)
                 cam = cv2.VideoCapture(f"/dev/video{index}")
-                print("IS OPENED ", cam.isOpened())
+                # print("IS OPENED ", cam.isOpened())
                 if cam.isOpened():
                     check, _ = cam.read()
-                    print("CHECK " , check)
+                    # print("CHECK " , check)
                     if check:
                         cameras.append(cam)
                         print(f"Cmaera found on /dev/video{index}")
                         index += 2
                 else:
-                    return cameras    
+                    return cameras
         except Exception as e:
             print(e)
-            
 
-    def get_frames(self):
-        # print(self.capure.isOpened())
+    def set_device(self, source: str):
+        self.cv2.VideoCapture(source)
+
+    def read(self) -> bool | npt.NDArray:
+        with self.read_lock:
+            frame = self.frames.copy()
+            grabbed = self.grabbed
+        return grabbed, frame
+
+    def stop(self):
+        self.is_running = False
+        self.thread.join()
+
+    def view(self, frame):
+        # print(self.grabbed)
         try:
-            while self.capture.isOpened():
-                if self.is_running:
-                    (grabbed, frames) = self.capture.read()
-                    print(frames)
-                    # print(self.grabbed)
-                    # print(f"{self.name}: ", self.frames)
-                    np.append(self.frames, frames)
-        except KeyboardInterrupt as ex:
-            print("exit")
-            self.capture.release()
-
-
-    def view(self):
-        print(self.grabbed)
-        try:
-            if not self.grabbed:
-                sys.exit(f"Vide capture unable to be grabbed on Thread {self.name}")
-
-            cv2.imshow(f"{self.name}", self.frames) 
-            if cv2.waitKey(1) == ord('q'):
+            cv2.imshow(f" {self.thread.name} ", frame)
+            if cv2.waitKey(1) == ord("q"):
+                # self.thread.join()
+                self.capture.release()
                 sys.exit("exiting")
         except KeyboardInterrupt as ex:
             print("exit")
@@ -84,12 +99,30 @@ class Camera(Thread):
 
 
 if __name__ == "__main__":
-    #create a list of cameras
-    #camers = [Camera(480, 620, 0), Camera(480, 620, 2)]
-    # start each camera in lisr
-    cam = Camera(480, 620, 0)
-    x = cam.get_devices()
-    print(x)
+    cam = CameraThread(1000, 1000, "/dev/video0")
     
-    
+    cam.start()
+    cam2 = CameraThread(480, 620, "/dev/video2")
+    cam2.start()
+    cam3 = CameraThread(480, 620, "/dev/video4")
+    cam3.start()
 
+    while True:
+        # _ , frames1 = cam.read()
+        # print(f"Frames on {cam.thread.name}:  {frames1}")
+        # _ , frames2 = cam.read()
+
+        # print(f"Frames on {cam2.thread.name}:  {frames2}")
+        # _ , frames3 = cam.read()
+
+        # print(f"Frames on {cam3.thread.name}:  {frames3}")
+
+
+        _, frames = cam.read()
+        cam.view(frame=frames)
+# 
+        _, frames2 = cam2.read()
+        cam2.view(frame=frames2)
+# 
+        _, frames3 = cam3.read()
+        cam3.view(frame=frames3)

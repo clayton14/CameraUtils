@@ -1,8 +1,10 @@
-import cv2
 import sys
+import glob
 from threading import Thread
 import threading
 from typing import List
+
+import cv2
 import numpy as np
 import numpy.typing as npt
 
@@ -26,6 +28,7 @@ class CameraThread:
     def __exit__(self, exec_type, exc_value, traceback):
         self.cap.release()
 
+
     def start(self) -> object:
         # TODO - implement run method
         if self.is_running:
@@ -36,6 +39,7 @@ class CameraThread:
         # Thread(target=self.view, args=(), daemon=True)
         self.thread.start()
         return self
+
 
     def update(self) -> None:
         # print(self.capure.isOpened())
@@ -49,30 +53,26 @@ class CameraThread:
             print("exit")
             self.capture.release()
 
-    def get_devices(self) -> List[object]:
+
+    @staticmethod
+    def list_devices() -> List[str]:
         # retruns a list of CV2 capture devices
         # TODO - list all the camer deviecs and return list of avlaible devices
-        index = 0
-        cameras = []
-        try:
-            while True:
-                # print("INDE   X ", index)
-                cam = cv2.VideoCapture(f"/dev/video{index}")
-                # print("IS OPENED ", cam.isOpened())
-                if cam.isOpened():
-                    check, _ = cam.read()
-                    # print("CHECK " , check)
-                    if check:
-                        cameras.append(cam)
-                        print(f"Cmaera found on /dev/video{index}")
-                        index += 2
-                else:
-                    return cameras
-        except Exception as e:
-            print(e)
+        # video = [vid for vid in os.listdir("/dev/") if "video" in vid]
+        devices = []
+        video = glob.glob("/dev/video*")
+        for vid in video:
+            cap = cv2.VideoCapture(vid)
+            if cap.grab():
+                devices.append(vid)
+            else:
+                # print(f"Cant grab {vid}")
+                pass
+        return devices
 
     def set_device(self, source: str):
         self.cv2.VideoCapture(source)
+
 
     def read(self) -> bool | npt.NDArray:
         with self.read_lock:
@@ -80,9 +80,11 @@ class CameraThread:
             grabbed = self.grabbed
         return grabbed, frame
 
+
     def stop(self):
         self.is_running = False
         self.thread.join()
+
 
     def view(self, frame):
         # print(self.grabbed)
@@ -99,30 +101,10 @@ class CameraThread:
 
 
 if __name__ == "__main__":
+
+    print(CameraThread.list_devices())
+
     cam = CameraThread(1000, 1000, "/dev/video0")
+    print(cam.list_devices())
     
-    cam.start()
-    cam2 = CameraThread(480, 620, "/dev/video2")
-    cam2.start()
-    cam3 = CameraThread(480, 620, "/dev/video4")
-    cam3.start()
-
-    while True:
-        # _ , frames1 = cam.read()
-        # print(f"Frames on {cam.thread.name}:  {frames1}")
-        # _ , frames2 = cam.read()
-
-        # print(f"Frames on {cam2.thread.name}:  {frames2}")
-        # _ , frames3 = cam.read()
-
-        # print(f"Frames on {cam3.thread.name}:  {frames3}")
-
-
-        _, frames = cam.read()
-        cam.view(frame=frames)
-# 
-        _, frames2 = cam2.read()
-        cam2.view(frame=frames2)
-# 
-        _, frames3 = cam3.read()
-        cam3.view(frame=frames3)
+    

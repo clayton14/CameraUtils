@@ -3,7 +3,7 @@ import glob
 from threading import Thread
 import threading
 from typing import List
-
+import pytesseract
 import cv2
 import numpy as np
 import numpy.typing as npt
@@ -70,7 +70,7 @@ class CameraThread:
                 pass
         return devices
 
-    def set_device(self, source: str):
+    def set_device(self, source:str):
         self.cv2.VideoCapture(source)
 
 
@@ -91,8 +91,8 @@ class CameraThread:
         try:
             cv2.imshow(f" {self.thread.name} ", frame)
             if cv2.waitKey(1) == ord("q"):
-                # self.thread.join()
                 self.capture.release()
+                self.stop()
                 sys.exit("exiting")
         except KeyboardInterrupt as ex:
             print("exit")
@@ -100,11 +100,40 @@ class CameraThread:
             cv2.destroyAllWindows()
 
 
+
+class OCR:
+    #TODO - send data between threads/multiprocess to speed up video
+    def __init__(self, lang:str, ) -> None:
+        self.lang = lang
+        self.is_running = False
+        
+
+    def update(self):
+        while self.is_running:
+            pass
+
+    def read_frame(self, frames:npt.NDArray, lang="eng") -> str:
+        frames = cv2.cvtColor(frames, cv2.COLOR_BGR2GRAY)
+        text = pytesseract.image_to_string(frames, lang=lang)
+        return text
+
+
+    def draw_box(frames):
+        pass
+    
+
 if __name__ == "__main__":
-
+    #list devices on cimputer
     print(CameraThread.list_devices())
+    # list after camera is used
+    ct = CameraThread(1000, 1000, "/dev/video0")
+    print(ct.list_devices())
+    #start the thread
+    ct.start()
+    
+    while True:
+        _, frames = ct.read()
+        #text = OCR.read_frame(frames)
+        ct.view(frame=frames)
 
-    cam = CameraThread(1000, 1000, "/dev/video0")
-    print(cam.list_devices())
-    
-    
+    ct.stop()

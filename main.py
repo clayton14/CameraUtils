@@ -1,34 +1,39 @@
-import numpy as np
 import cv2 as cv
-import pytesseract as ocr
 import os, sys
+from threading import Thread
+from multiprocessing import Process, Queue
 
-import threading
-from queue import Queue
+import numpy as np
+import pytesseract as ocr
+
+from camera import Camera
+# from queue import Queue
 
 # TODO get camera devices in list
 # TODO read in camera data
 # TODO run OCR on vidoe frames
 # TODO optmise -> https://stackoverflow.com/questions/55494331/recording-video-with-opencv-python-multithreading
 
-print_lock = threading.Lock()
-cap = cv.VideoCapture(0)
+# print_lock = threading.Lock()
+cap = cv.VideoCapture("/dev/video0")
 
-def read_text():
-   
+frame_queue = Queue()
+
+def main():
+    count = 0
     if not cap.isOpened():
         print("Cannot open camera")
         exit()
     try:
         print("Reading Frames")
         while cap.isOpened():
-            ret, frames = cap.read()
-            
+            count += 1
+            ret, frames = cap.read()    
             # TODO - process this on seprate thread
             #gray scaling the image made the OCR a bit more accurate
             frames = cv.cvtColor(frames, cv.COLOR_BGR2GRAY)
-            text = ocr.image_to_string(frames, lang="eng")
-            print(text)
+            if (count % 2 == 0):
+                frame_queue.put(frames)
             if not ret:
                 print("Can't receive frame (stream end?). Exiting ...")
                 break
@@ -42,51 +47,26 @@ def read_text():
     
 
 
-# def display_videp(frames):
-#     cv.imshow('frame', frames)
-#     if cv.waitKey(1) == ord('q'):
-#         break
-#     # When everything done, release the capture
-#     cap.release()
-#     cv.destroyAllWindows()
-    
-
+def read_text(data, q):
+    while True:
+        text = ocr.image_to_string(data.get(), lang="eng")
+        q.put(text)
+        #print(text)
 
 
 if __name__ == "__main__":
+    text_queue = Queue()
     
-    read_text()
+    cam = Camera(480, 620, "/dev/video0").start()
+    
+    
+    t2 = Process(target=read_text, args=(frame_queue, text_queue)).start()
 
-
-
-
-#class OCRThread(threading.Thread):
-
-#     '''
-#     Pass video frame to second thread for porcessing
-#     hopefully this 
-#     '''
-
-#     def __init__(self, queue, args=(), kwargs=None):
-#         threading.Thread.__init__(self, args=(), kwargs=None)
-#         self.queue = queue
-#         self.daemon = True
-#         self.receive_messages = args
-
-#     def run(self):
-#         print (threading.currentThread().getName(), self.receive_messages)
-#         val = self.queue.get()
-#         while True:
-#             val = self.queue.get()
-#             if val is None:
-#                 return
-#             self.get_text(val)
-
-
-#     def get_text(self, message):
-#         if self.receive_messages:
-#                 # text = ocr.image_to_string(frames, lang="eng")
-#                 # print(text)
-#             print(message)
-#             with print_lock:
-#                 print (threading.currentThread().getName(), "Received {}".format(message))
+    while True:
+        _, frames = cam.read()
+        frame_queue.put(frames)
+        print(text_queue.get())
+    
+    t1.join()
+    t2.join()
+    

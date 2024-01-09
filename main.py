@@ -1,6 +1,7 @@
 import cv2 as cv
 import os, sys
 from threading import Thread
+import threading
 from multiprocessing import Process, Queue
 
 import numpy as np
@@ -14,7 +15,6 @@ from camera import Camera
 # TODO run OCR on vidoe frames
 # TODO optmise -> https://stackoverflow.com/questions/55494331/recording-video-with-opencv-python-multithreading
 
-# print_lock = threading.Lock()
 cap = cv.VideoCapture("/dev/video0")
 
 frame_queue = Queue()
@@ -46,27 +46,43 @@ def main():
         cv.destroyAllWindows()
     
 
-
 def read_text(data, q):
     while True:
         text = ocr.image_to_string(data.get(), lang="eng")
         q.put(text)
-        #print(text)
 
 
 if __name__ == "__main__":
-    text_queue = Queue()
-    
-    cam = Camera(480, 620, "/dev/video0").start()
-    
-    
-    t2 = Process(target=read_text, args=(frame_queue, text_queue)).start()
 
-    while True:
-        _, frames = cam.read()
-        frame_queue.put(frames)
-        print(text_queue.get())
+    print(os.getpid())
+    print(threading.active_count())
+    #list devices on cimputer
+    print(Camera.list_devices())
+    ct = Camera(600, 620, "/dev/video0").start()
+    print(threading.active_count())
+
+    #start the thread
     
-    t1.join()
-    t2.join()
+    # p = Process()
+    try:
+        while True:
+            cool = ct.read()
+            print(cool)
+    except KeyboardInterrupt:
+        print("stop")
+
+
+
+
+    # text_queue = Queue()
+    # cam = Camera(480, 620, "/dev/video0").start()
+    # t2 = Process(target=read_text, args=(frame_queue, text_queue)).start()
+    # 
+# 
+    # while True:
+        # _, frames = cam.read()
+        # frame_queue.put(frames)
+        # print(text_queue.get())
+    # 
+    # t2.join()
     

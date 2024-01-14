@@ -123,18 +123,15 @@ class Camera:
         self.capture.release()
         cv2.destroyAllWindows()
 
-    def view(self, frame: npt.NDArray):
+    def view(self, frames):
         """
-        Displays a frame in a window using OpenCV.
-
-        Args:
-            frame: A NumPy array representing the frame to display.
+        Displays the video capture.
 
         Exits on "q" key press or KeyboardInterrupt (Ctrl+C).
 
         """
         try:
-            cv2.imshow(f" {self.thread.name} ", frame)
+            cv2.imshow(f" {self.thread.name} ", frames)
             if cv2.waitKey(1) == ord("q"):
                 self.stop()
                 sys.exit("exiting")
@@ -161,76 +158,29 @@ class Camera:
         return devices
 
 
-class OCR():
-    def __init__(self, frameBuff) -> None:
-        self.is_running = True
-        self.boxes = None
-        self.frameBuff = frameBuff
-        self.read_lock = threading.Lock()
 
-    def get_text(self) -> object:
-        """
-        accesses the queus and passes frames to pytesseract.image_to_string() method
-        """
-        
-        frames = self.queue.get()
-        self.text = pytesseract.image_to_string(frames)
-        return self
-
-    def detect_symbols(self, frames):
-        """
-        Draws boxes atound each symbol present in the image
-        """
-        # TODO - read data in from Queue or pipe and draw
-        #
-        pass
-
-    @staticmethod
-    def test():
-        CWD = os.getcwd()
-        img_path = (os.path.join(
-            CWD, "test_img",
-        ))
-        img = cv2.imread(os.path.join(img_path, "testocr.png"))
-        img_h, img_w, _ = img.shape
-        print(img.shape)
-        boxes = pytesseract.image_to_boxes(img, lang="eng", config=r"--psm 6 --oem 3")
-        for box in boxes.splitlines():
-            box = box.split(" ")
-            char = box[0]
-            x, y, w, h = int(box[1]), int(box[2]), int(box[3]), int(box[4])
-            print(f"box x:{x}, y:{y}, w:{w}, h:{h}")
-            img_b = cv2.rectangle(img, (x, img_h - y), (w, img_h - h), color=(0, 0, 255), thickness=1)
-        cv2.imwrite("test.png", img_b)
-
-
-
-
-    def read(self):
-        # TODO - get data from tesseract
-        pass
-
-
-    def start(self):
-        Thread(target=self.read, daemon=False)
 
 
 if __name__ == "__main__":
     frame_buff = Queue(maxsize=512)
-    lock = threading.Lock()
     print(Camera.list_devices())
     ct = Camera(width=480, height=620, source="/dev/video0")
     ct.start()
 
-    vp = OCR()
-    p = Thread(target=vp.get_text, args=(frame_buff)).start()
+    ocr = OCR(frameBuff=frame_buff)
+  
 
     try:
+        count = 0
         while True:
             _, frame = ct.read()
-            with lock:
+            count += 1 
+            if (count % 20 == 0): # every 20 frames read text
                 frame_buff.put(frame)
-            print(vp.text)
+                
+                box_frame = ocr.detect_symbols()
+            ct.view(frame)
+            #ct.view(box_frame)
     except KeyboardInterrupt:
         print("stop")
         frame_buff.join()

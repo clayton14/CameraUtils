@@ -161,12 +161,12 @@ class Camera:
         return devices
 
 
-class VideoProcess():
-    def __init__(self, queue) -> None:
+class OCR():
+    def __init__(self, frameBuff) -> None:
         self.is_running = True
-        self.queue = queue
+        self.boxes = None
+        self.frameBuff = frameBuff
         self.read_lock = threading.Lock()
-        self.text = ""
 
     def get_text(self) -> object:
         """
@@ -177,13 +177,42 @@ class VideoProcess():
         self.text = pytesseract.image_to_string(frames)
         return self
 
-    def detect_symbols(frames):
+    def detect_symbols(self, frames):
         """
         Draws boxes atound each symbol present in the image
         """
         # TODO - read data in from Queue or pipe and draw
         #
         pass
+
+    @staticmethod
+    def test():
+        CWD = os.getcwd()
+        img_path = (os.path.join(
+            CWD, "test_img",
+        ))
+        img = cv2.imread(os.path.join(img_path, "testocr.png"))
+        img_h, img_w, _ = img.shape
+        print(img.shape)
+        boxes = pytesseract.image_to_boxes(img, lang="eng", config=r"--psm 6 --oem 3")
+        for box in boxes.splitlines():
+            box = box.split(" ")
+            char = box[0]
+            x, y, w, h = int(box[1]), int(box[2]), int(box[3]), int(box[4])
+            print(f"box x:{x}, y:{y}, w:{w}, h:{h}")
+            img_b = cv2.rectangle(img, (x, img_h - y), (w, img_h - h), color=(0, 0, 255), thickness=1)
+        cv2.imwrite("test.png", img_b)
+
+
+
+
+    def read(self):
+        # TODO - get data from tesseract
+        pass
+
+
+    def start(self):
+        Thread(target=self.read, daemon=False)
 
 
 if __name__ == "__main__":
@@ -193,7 +222,7 @@ if __name__ == "__main__":
     ct = Camera(width=480, height=620, source="/dev/video0")
     ct.start()
 
-    vp = VideoProcess()
+    vp = OCR()
     p = Thread(target=vp.get_text, args=(frame_buff)).start()
 
     try:
@@ -205,3 +234,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("stop")
         frame_buff.join()
+          
